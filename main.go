@@ -21,9 +21,10 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package glatex
+package latex
 
 import (
+	"bytes"
 	"crypto"
 	"errors"
 	"fmt"
@@ -32,7 +33,7 @@ import (
 	"menteslibres.net/gosexy/to"
 	"os"
 	"os/exec"
-	"strings"
+	"path"
 )
 
 const (
@@ -45,14 +46,53 @@ const (
 )
 
 /*
+	Rendered type stores settings for the rendering toolchain.
+*/
+type Renderer struct {
+	Density  int
+	UseCache bool
+}
+
+/*
+	Returns a new *Renderer with default options.
+*/
+func New() *Renderer {
+	self := &Renderer{}
+	self.Density = 144
+	self.UseCache = true
+	return self
+}
+
+/*
 	Renders a LaTeX string, returns a PNG image path.
 */
-func Render(tex string, density int) (string, error) {
+func (self *Renderer) Render(latex string) (string, error) {
 	var err error
 
-	name := checksum.String(tex, crypto.SHA1)
+	name := checksum.String(latex, crypto.SHA1)
 
-	//filename := OutputDirectory + PS + name
+	// Relative output directory.
+	relPath := name[0:4] + PS + name[4:8] + PS + name[8:12] + PS + name[12:16] + PS + name[16:] + ".png"
+
+	// Setting output directory.
+	pngPath := OutputDirectory + PS + relPath
+
+	err = os.MkdirAll(path.Dir(pngPath), 0755)
+
+	if err != nil {
+		return "", err
+	}
+
+	// Does the output file already exists?
+	if self.UseCache == true {
+		_, err = os.Stat(pngPath)
+
+		if err == nil {
+			return relPath, nil
+		}
+	}
+
+	// Setting working directory.
 	workdir := WorkingDirectory + PS + name
 
 	err = os.MkdirAll(workdir, 0755)
@@ -61,32 +101,8 @@ func Render(tex string, density int) (string, error) {
 		return "", err
 	}
 
-	snippet := strings.Trim(tex, "\r\n\t")
-
-	// Default formatting
-	if strings.HasPrefix(snippet, `\begin{document}`) == false {
-		snippet = fmt.Sprintf(`
-			\begin{document}
-			%s
-			\end{document}`,
-			snippet,
-		)
-	}
-
-	if strings.Contains(snippet, `\documentclass`) == false {
-		snippet = fmt.Sprintf(`
-			\documentclass[draft]{article}
-			\usepackage[dvips]{color}
-			\usepackage[dvips]{graphicx}
-			\usepackage{amsmath}
-			\usepackage{amsfonts}
-			\usepackage{amssymb}
-			\pagestyle{empty}
-			\pagecolor{white}
-			%s`,
-			snippet,
-		)
-	}
+	// Will clean the directory at the end.
+	defer os.RemoveAll(workdir)
 
 	// Writing LaTeX to a file.
 	texFile, err := os.Create(workdir + PS + "output.tex")
@@ -95,17 +111,17 @@ func Render(tex string, density int) (string, error) {
 		return "", err
 	}
 
-	_, err = io.WriteString(texFile, snippet)
+	defer texFile.Close()
+
+	_, err = io.WriteString(texFile, latex)
 
 	if err != nil {
 		return "", err
 	}
 
-	texFile.Close()
-
+	// Temp files.
 	dviPath := workdir + PS + "output.dvi"
 	epsPath := workdir + PS + "output.eps"
-	pngPath := workdir + PS + "output.png"
 
 	// LaTeX toolchain
 	batch := []*exec.Cmd{
@@ -126,16 +142,34 @@ func Render(tex string, density int) (string, error) {
 			"convert",
 			"+adjoin",
 			"-density",
-			to.String(density),
+			to.String(self.Density),
 			"-antialias",
 			epsPath,
 			pngPath,
 		),
 	}
 
+	// Executing toolchain.
 	for _, cmd := range batch {
 		err = cmd.Run()
+
 		if err != nil {
+			// Trying to catch error
+			logPath := workdir + PS + "output.log"
+
+			logFile, err := os.Open(logPath)
+
+			if err == nil {
+				buf := bytes.NewBuffer(nil)
+				buf.ReadFrom(logFile)
+
+				logFile.Close()
+
+				if buf.Len() > 0 {
+					return "", errors.New(string(buf.Bytes()))
+				}
+			}
+
 			return "", err
 		}
 	}
@@ -145,7 +179,8 @@ func Render(tex string, density int) (string, error) {
 
 	if err != nil || stat == nil {
 		return "", errors.New("Failed to create PNG file.")
+
 	}
 
-	return pngPath, err
+	return relPath, err
 }

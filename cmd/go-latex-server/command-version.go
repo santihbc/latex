@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2013 José Carlos Nieto, https://menteslibres.org/xiam
+  Copyright (c) 2013 José Carlos Nieto, https://menteslibres.net/xiam
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,21 +21,27 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package latex
+package main
 
 import (
-	"log"
-	"testing"
+	"fmt"
+	"github.com/gosexy/cli"
 )
 
-func TestLatex(t *testing.T) {
-	renderer := New()
+const Version = "0.1"
 
-	file, err := renderer.Chunk(`\LaTeX`)
+func init() {
+	cli.Register("version", cli.Entry{
+		Name:        "version",
+		Description: "Prints software version.",
+		Command:     &versionCommand{},
+	})
+}
 
-	if err != nil {
-		t.Fatalf("ERROR: %s", err.Error())
-	}
+type versionCommand struct {
+}
 
-	log.Printf("OK: %v\n", file)
+func (self *versionCommand) Execute() error {
+	fmt.Printf("Version: %s\n", Version)
+	return nil
 }

@@ -1,5 +1,5 @@
 /*
-  Copyright (c) 2013 José Carlos Nieto, https://menteslibres.org/xiam
+  Copyright (c) 2013 José Carlos Nieto, https://menteslibres.net/xiam
 
   Permission is hereby granted, free of charge, to any person obtaining
   a copy of this software and associated documentation files (the
@@ -21,21 +21,31 @@
   WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 */
 
-package latex
+package main
 
 import (
+	"github.com/gosexy/cli"
 	"log"
-	"testing"
 )
 
-func TestLatex(t *testing.T) {
-	renderer := New()
+func main() {
+	var err error
 
-	file, err := renderer.Chunk(`\LaTeX`)
+	// Software properties.
+	cli.Name = "LaTeX Server"
+	cli.Homepage = "https://menteslibres.net/api/latex"
+	cli.Author = "Carlos Reventlov"
+	cli.Version = Version
+	cli.AuthorEmail = "carlos@reventlov.com"
+
+	// Shows banner
+	cli.Banner()
+
+	// Dispatches the command.
+	err = cli.Dispatch()
 
 	if err != nil {
-		t.Fatalf("ERROR: %s", err.Error())
+		log.Printf("Failed to start: %s\n", err.Error())
 	}
 
-	log.Printf("OK: %v\n", file)
 }
