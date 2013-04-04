@@ -24,12 +24,14 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/gosexy/cli"
 	"github.com/xiam/latex"
-	"log"
+	"net"
 	"net/http"
+	"net/http/fcgi"
 	"strings"
 )
 
@@ -47,9 +49,12 @@ const imagesEndpoint = pathPrefix + latex.OutputDirectory
 const serviceEndpoint = pathPrefix + "png"
 
 // Cofiguration flags.
-var addr = flag.String("addr", ":9193", "Service address.")
-var serverType = flag.String("type", "standalone", "Service type ('standalone' or 'fastcgi').")
-var prefix = flag.String("prefix", imagesEndpoint, "Prefix for generated PNG files. Probably a CDN.")
+var bindIp = flag.String("l", "0.0.0.0", "Bind to this IP.")
+var bindPort = flag.Int("p", 9193, "Listen on this port.")
+var bindSock = flag.String("s", "", "Socket path.")
+
+var serverType = flag.String("t", "standalone", "Service type ('standalone' or 'fastcgi').")
+var prefix = flag.String("r", imagesEndpoint, "Prefix for generated PNG files (i.e: a Content Delivery Network)")
 
 // Blacklisted commands.
 var blacklist = []string{
@@ -199,8 +204,7 @@ func serveImages(w http.ResponseWriter, r *http.Request) {
 // The run command executes this function.
 func (self *runCommand) Execute() error {
 
-	*prefix = "/" + strings.TrimLeft(*prefix, "/")
-	*prefix = strings.TrimRight(*prefix, "/") + "/"
+	var err error
 
 	h := &handler{
 		r: latex.New(),
@@ -208,12 +212,39 @@ func (self *runCommand) Execute() error {
 
 	http.Handle(serviceEndpoint, h)
 
-	http.HandleFunc(*prefix, serveImages)
+	if strings.HasPrefix(*prefix, "/") {
+		*prefix = "/" + strings.TrimLeft(*prefix, "/")
+		*prefix = strings.TrimRight(*prefix, "/") + "/"
+		http.HandleFunc(*prefix, serveImages)
+	}
 
-	err := http.ListenAndServe(*addr, nil)
+	addr := *bindSock
+	domain := "unix"
+
+	if addr == "" {
+		domain = "tcp"
+		addr = fmt.Sprintf("%s:%d", *bindIp, *bindPort)
+	}
+
+	listener, err := net.Listen(domain, addr)
 
 	if err != nil {
-		log.Fatal(err.Error())
+		return err
+	}
+
+	defer listener.Close()
+
+	switch *serverType {
+	case "standalone":
+		err = http.Serve(listener, nil)
+	case "fastcgi":
+		err = fcgi.Serve(listener, nil)
+	default:
+		return errors.New("Server type can be either \"fastcgi\" or \"standalone\" only.")
+	}
+
+	if err != nil {
+		return err
 	}
 
 	return nil

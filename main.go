@@ -125,7 +125,8 @@ func (self *Renderer) Render(latex string) (string, error) {
 
 	// LaTeX toolchain
 	batch := []*exec.Cmd{
-		exec.Command("latex",
+		exec.Command(
+			"latex",
 			"-no-shell-escape",
 			"-interaction=batchmode",
 			fmt.Sprintf("-output-directory=%s", workdir),
@@ -133,6 +134,8 @@ func (self *Renderer) Render(latex string) (string, error) {
 		),
 		exec.Command(
 			"dvips",
+			"-G",
+			"-R2",
 			"-E",
 			dviPath,
 			"-o",
@@ -150,6 +153,8 @@ func (self *Renderer) Render(latex string) (string, error) {
 	}
 
 	// Executing toolchain.
+	os.Setenv("openout_any", "p")
+
 	for _, cmd := range batch {
 		err = cmd.Run()
 

@@ -45,7 +45,7 @@ func main() {
 	err = cli.Dispatch()
 
 	if err != nil {
-		log.Printf("Failed to start: %s\n", err.Error())
+		log.Fatalf("Failed to start: %s\n", err.Error())
 	}
 
 }
