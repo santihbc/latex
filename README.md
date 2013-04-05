@@ -33,7 +33,7 @@ And start the server
 go-latex-server run
 ```
 
-Options for `go-latex-server run`
+Options for `go-latex-server run`:
 
 ```
 -l="0.0.0.0": Bind to this IP.
@@ -46,20 +46,20 @@ Options for `go-latex-server run`
 ### Setup example
 
 This line will start a FastCGI server listening on `127.0.0.1:9096` and will
-prepend CDN's URL (`https://ddori5d5np0fr.cloudfront.net/`) to the resulting
+prepend a CDN's URL (`https://ddori5d5np0fr.cloudfront.net/`) to the resulting
 image:
 
 ```
 go-latex-server -t fastcgi -l 127.0.0.1 -p 9096 -r https://ddori5d5np0fr.cloudfront.net/ run &
 ```
 
-This is a configuration snippet for [nginx](http://nginx.org), this snippet
+This is a configuration snippet for [nginx](http://nginx.org). This example
 assumes that we are going to serve the API on `http://example.org/api/latex`
-and that we are going to use a CDN to serve images.
+and to use a CDN to serve images.
 
 ```
 server {
-  # External image server. A CDN could be pointed here.
+  # Image server. A CDN may proxy to here.
   server_name direct-images.example.org;
   root /var/www/latex-server/images/;
 }
