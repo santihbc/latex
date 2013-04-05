@@ -10,8 +10,8 @@ A public version is available at [https://menteslibres.net/api/latex][1]
 ### Requisites
 
 Make sure you have the standard LaTeX toolchain and ImageMagick's `convert`
-installed in your system, the server expects to use these commands: `latex`,
-`dvips`, `convert`.
+installed in your system, the server expects these commands to be available:
+`latex`, `dvips`, `convert`.
 
 ### Getting and compiling the source
 
