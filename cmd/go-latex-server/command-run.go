@@ -142,7 +142,7 @@ func (self *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			} else {
 				w.WriteHeader(501)
 				// We can't show the exact error as it may give a lot of information.
-				w.Write([]byte("Syntax error."))
+				w.Write([]byte("Syntax error. Did you remember to add math mode ($...$)?"))
 			}
 		} else {
 			w.WriteHeader(403)
