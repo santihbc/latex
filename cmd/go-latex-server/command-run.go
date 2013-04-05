@@ -48,6 +48,10 @@ const imagesEndpoint = pathPrefix + latex.OutputDirectory
 // LaTeX service endpoint.
 const serviceEndpoint = pathPrefix + "png"
 
+// Max formula lenght
+// 2048 bytes ought to be enough for everyone.
+const MaxLenght = 2048
+
 // Cofiguration flags.
 var bindIp = flag.String("l", "0.0.0.0", "Bind to this IP.")
 var bindPort = flag.Int("p", 9193, "Listen on this port.")
@@ -57,51 +61,55 @@ var serverType = flag.String("t", "standalone", "Service type ('standalone' or '
 var prefix = flag.String("r", imagesEndpoint, "Prefix for generated PNG files (i.e: a Content Delivery Network)")
 
 // Blacklisted commands.
+//
+// Keep in mind:
+// * This service will render formulas only.
+// * Use lower-cased commands.
+// * The match will be done with strings.Contains.
 var blacklist = []string{
-	`\def`,
-	`\let`,
-	`\futurelet`,
-	`\newcommand`,
-	`\renewcomment`,
-	`\else`,
-	`\fi`,
-	`\write`,
-	`\input`,
-	`\include`,
-	`\chardef`,
-	`\catcode`,
-	`\makeatletter`,
-	`\noexpand`,
-	`\toksdef`,
-	`\every`,
-	`\errhelp`,
-	`\errorstopmode`,
-	`\scrollmode`,
-	`\nonstopmode`,
+	`\after`,
 	`\batchmode`,
-	`\read`,
-	`\csname`,
-	`\newhelp`,
-	`\relax`,
-	`\afterground`,
-	`\afterassignment`,
-	`\expandafter`,
-	`\noexpand`,
-	`\special`,
+	`\begin`,
+	`\catcode`,
+	`\chapter`,
+	`\chardef`,
 	`\command`,
-	`\loop`,
-	`\repeat`,
-	`\toks`,
-	`\output`,
+	`\csname`,
+	`\declare`,
+	`\def`,
+	`\document`,
+	`\else`,
+	`\end`,
+	`\err`,
+	`\every`,
+	`\expand`,
+	`\fi`,
+	`\futurelet`,
+	`\include`,
+	`\input`,
+	`\let`,
 	`\line`,
+	`\loop`,
+	`\makeatletter`,
 	`\mathcode`,
-	`\name`,
-	`\section`,
 	`\mbox`,
-	`\DeclareRobustCommand`,
+	`\name`,
+	`\new`,
+	`\noexpand`,
+	`\nonstopmode`,
 	`\open`,
-	`\aftergroup`,
-	`\afterassignment`,
+	`\output`,
+	`\page`,
+	`\read`,
+	`\relax`,
+	`\renewcomment`,
+	`\repeat`,
+	`\scrollmode`,
+	`\section`,
+	`\special`,
+	`\tok`,
+	`\use`,
+	`\write`,
 }
 
 // Registers the run command.
@@ -161,10 +169,19 @@ func (self *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func chunk(latex string) (string, error) {
 	latex = strings.Trim(latex, "\r\n\t")
 
+	// Case does not matter but just in case.
+	llatex := strings.ToLower(latex)
+
+	// Inspect the formula.
 	for _, word := range blacklist {
-		if strings.Contains(latex, word) == true {
+		if strings.Contains(llatex, word) == true {
 			return "", fmt.Errorf("Sorry, command %s is not available.", word)
 		}
+	}
+
+	// Check length.
+	if len(llatex) > MaxLenght {
+		return "", errors.New("Formula is too long.")
 	}
 
 	// Default document properties.
